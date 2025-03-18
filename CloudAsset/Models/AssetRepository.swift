@@ -368,4 +368,81 @@ class AssetRepository: ObservableObject {
                    asset.wrappedNotes.lowercased().contains(lowercaseQuery)
         }
     }
+    
+    // 刷新资产数据
+    func refreshAssets() {
+        print("开始刷新资产数据...")
+        
+        // 强制使用新的后台上下文来获取数据，避免缓存问题
+        let backgroundContext = PersistenceController.shared.container.newBackgroundContext()
+        backgroundContext.automaticallyMergesChangesFromParent = true
+        
+        // 在后台队列中执行数据刷新，避免UI阻塞
+        DispatchQueue.global(qos: .userInitiated).async {
+            // 在后台上下文中获取最新数据
+            let fetchRequest: NSFetchRequest<Asset> = Asset.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Asset.name, ascending: true)]
+            
+            do {
+                // 使用后台上下文获取数据
+                let freshAssets = try backgroundContext.fetch(fetchRequest)
+                
+                // 在主线程中更新数据
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // 将获取的数据转换为主上下文中的对象
+                    var updatedAssets: [Asset] = []
+                    for freshAsset in freshAssets {
+                        if let objectID = freshAsset.objectID as? NSManagedObjectID, 
+                           let mainAsset = try? self.context.existingObject(with: objectID) as? Asset {
+                            updatedAssets.append(mainAsset)
+                        }
+                    }
+                    
+                    // 重置和更新集合，触发UI更新
+                    self.assets = []
+                    
+                    // 使用微小延迟，确保UI能捕获到变化
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // 更新集合
+                        self.assets = updatedAssets
+                        
+                        // 更新统计数据
+                        self.updateStatistics()
+                        
+                        print("资产数据刷新完成。获取到 \(self.assets.count) 个资产。")
+                        
+                        // 发送完成通知
+                        NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
+                    }
+                }
+                
+                // 刷新类别数据
+                let categoryRequest: NSFetchRequest<Category> = Category.fetchRequest()
+                categoryRequest.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \Category.order, ascending: true),
+                    NSSortDescriptor(keyPath: \Category.name, ascending: true)
+                ]
+                
+                let freshCategories = try backgroundContext.fetch(categoryRequest)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    var updatedCategories: [Category] = []
+                    for freshCategory in freshCategories {
+                        if let objectID = freshCategory.objectID as? NSManagedObjectID,
+                           let mainCategory = try? self.context.existingObject(with: objectID) as? Category {
+                            updatedCategories.append(mainCategory)
+                        }
+                    }
+                    
+                    self.categories = updatedCategories
+                }
+            } catch {
+                print("刷新资产数据失败: \(error)")
+            }
+        }
+    }
 } 

@@ -167,35 +167,60 @@ struct AssetFormView: View {
             finalImageData = processedImage.jpegData(compressionQuality: 0.8)
         }
         
-        switch mode {
-        case .add:
-            _ = assetRepository.addAsset(
-                name: name,
-                categoryId: categoryId,
-                price: priceValue,
-                purchaseDate: purchaseDate,
-                warrantyEndDate: warrantyDate,
-                totalUses: totalUsesValue,
-                notes: notes.isEmpty ? nil : notes,
-                imageData: finalImageData
-            )
-        case .edit(let asset):
-            _ = assetRepository.updateAsset(
-                id: asset.wrappedId,
-                name: name,
-                categoryId: categoryId,
-                price: priceValue,
-                purchaseDate: purchaseDate,
-                warrantyEndDate: warrantyDate,
-                totalUses: totalUsesValue,
-                usedCount: usedCountValue,
-                notes: notes.isEmpty ? nil : notes,
-                imageData: finalImageData,
-                currentlyInUse: currentlyInUse
-            )
+        // 异步保存以避免UI阻塞
+        DispatchQueue.global(qos: .userInitiated).async {
+            var success = false
+            
+            switch self.mode {
+            case .add:
+                if self.assetRepository.addAsset(
+                    name: self.name,
+                    categoryId: categoryId,
+                    price: priceValue,
+                    purchaseDate: self.purchaseDate,
+                    warrantyEndDate: warrantyDate,
+                    totalUses: totalUsesValue,
+                    notes: self.notes.isEmpty ? nil : self.notes,
+                    imageData: finalImageData
+                ) != nil {
+                    success = true
+                }
+            case .edit(let asset):
+                success = self.assetRepository.updateAsset(
+                    id: asset.wrappedId,
+                    name: self.name,
+                    categoryId: categoryId,
+                    price: priceValue,
+                    purchaseDate: self.purchaseDate,
+                    warrantyEndDate: warrantyDate,
+                    totalUses: totalUsesValue,
+                    usedCount: usedCountValue,
+                    notes: self.notes.isEmpty ? nil : self.notes,
+                    imageData: finalImageData,
+                    currentlyInUse: self.currentlyInUse
+                )
+            }
+            
+            // 在主线程上执行UI操作
+            DispatchQueue.main.async {
+                // 保存后立即刷新数据
+                if success {
+                    // 先发送通知，通知列表页准备刷新
+                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanging"), object: nil)
+                    
+                    // 强制同步保存和刷新（这很重要）
+                    try? self.viewContext.save()
+                    self.assetRepository.refreshAssets()
+                    
+                    // 短暂延迟后再次通知列表页刷新数据已完成
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanged"), object: nil)
+                    }
+                }
+                
+                self.dismiss()
+            }
         }
-        
-        dismiss()
     }
     
     var body: some View {

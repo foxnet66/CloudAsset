@@ -9,6 +9,8 @@ struct AssetListView: View {
     @State private var showingAddAsset = false
     @State private var showingProUpgrade = false
     @State private var filterByInUse = false
+    @State private var refreshTrigger = UUID() // 使用UUID来强制视图更新
+    @State private var isManuallyRefreshing = false // 记录是否正在手动刷新
     
     private var filteredAssets: [Asset] {
         var result = assetRepository.assets
@@ -79,13 +81,24 @@ struct AssetListView: View {
             }
             .padding(.top, 5)
             
-            // 资产列表
+            // 资产列表 - 添加下拉刷新
             List {
                 ForEach(filteredAssets) { asset in
                     NavigationLink(destination: AssetDetailView(asset: asset)) {
                         AssetRow(asset: asset)
                     }
                 }
+            }
+            .id(refreshTrigger) // 使用id修饰符强制整个列表刷新
+            .refreshable {
+                // 添加下拉刷新功能
+                isManuallyRefreshing = true
+                assetRepository.refreshAssets()
+                
+                // 等待一段时间或等待刷新完成
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+                refreshTrigger = UUID() // 强制更新视图
+                isManuallyRefreshing = false
             }
             .searchable(text: $searchText, prompt: "搜索资产")
             .overlay {
@@ -115,24 +128,83 @@ struct AssetListView: View {
         .navigationTitle("我的资产")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    if assetRepository.hasReachedFreeLimit {
-                        showingProUpgrade = true
-                    } else {
-                        showingAddAsset = true
+                HStack {
+                    // 添加刷新按钮
+                    Button {
+                        // 手动刷新数据
+                        isManuallyRefreshing = true
+                        assetRepository.refreshAssets()
+                        
+                        // 短暂延迟后更新UI
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            refreshTrigger = UUID()
+                            isManuallyRefreshing = false
+                        }
+                    } label: {
+                        if isManuallyRefreshing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
                     }
-                } label: {
-                    Image(systemName: "plus")
+                    
+                    // 添加资产按钮
+                    Button {
+                        if assetRepository.hasReachedFreeLimit {
+                            showingProUpgrade = true
+                        } else {
+                            showingAddAsset = true
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
-        .sheet(isPresented: $showingAddAsset) {
+        .sheet(isPresented: $showingAddAsset, onDismiss: {
+            // 表单关闭时刷新数据
+            assetRepository.refreshAssets()
+            
+            // 短暂延迟后更新UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                refreshTrigger = UUID()
+            }
+        }) {
             NavigationStack {
                 AssetFormView(mode: .add)
             }
         }
         .sheet(isPresented: $showingProUpgrade) {
             ProUpgradeView()
+        }
+        .onAppear {
+            // 每次视图出现时刷新数据
+            assetRepository.refreshAssets()
+            
+            // 短暂延迟后更新UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                refreshTrigger = UUID()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AssetDataChanged"))) { _ in
+            // 接收到数据变化通知后刷新
+            assetRepository.refreshAssets()
+            
+            // 短暂延迟后更新UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                refreshTrigger = UUID()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AssetDataChanging"))) { _ in
+            // 接收到数据即将变化的通知，标记正在刷新状态
+            isManuallyRefreshing = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AssetDataRefreshCompleted"))) { _ in
+            // 数据刷新完成后更新UI
+            refreshTrigger = UUID()
+            isManuallyRefreshing = false
         }
     }
 }

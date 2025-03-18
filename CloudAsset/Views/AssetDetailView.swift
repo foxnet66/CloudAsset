@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AssetDetailView: View {
     @EnvironmentObject private var assetRepository: AssetRepository
+    @Environment(\.dismiss) private var dismiss
     
     let asset: Asset
     @State private var showingEditSheet = false
@@ -77,7 +78,13 @@ struct AssetDetailView: View {
                             
                             if asset.remainingUsesCount > 0 {
                                 Button {
-                                    _ = assetRepository.incrementAssetUsedCount(id: asset.wrappedId)
+                                    if assetRepository.incrementAssetUsedCount(id: asset.wrappedId) {
+                                        // 手动刷新数据以立即更新界面
+                                        DispatchQueue.main.async {
+                                            NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanged"), object: nil)
+                                            assetRepository.refreshAssets()
+                                        }
+                                    }
                                 } label: {
                                     Label("增加使用次数", systemImage: "plus.circle")
                                         .frame(maxWidth: .infinity)
@@ -112,7 +119,13 @@ struct AssetDetailView: View {
                 GroupBox {
                     VStack(spacing: 12) {
                         Button {
-                            _ = assetRepository.toggleAssetInUse(id: asset.wrappedId)
+                            if assetRepository.toggleAssetInUse(id: asset.wrappedId) {
+                                // 手动刷新数据以立即更新界面
+                                DispatchQueue.main.async {
+                                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanged"), object: nil)
+                                    assetRepository.refreshAssets()
+                                }
+                            }
                         } label: {
                             Label(
                                 asset.currentlyInUse ? "标记为未使用" : "标记为正在使用",
@@ -145,7 +158,14 @@ struct AssetDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .sheet(isPresented: $showingEditSheet, onDismiss: {
+            // 表单关闭时刷新数据
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                assetRepository.refreshAssets()
+                // 通知列表页进行刷新
+                NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanged"), object: nil)
+            }
+        }) {
             NavigationStack {
                 AssetFormView(mode: .edit(asset: asset))
             }
@@ -158,10 +178,23 @@ struct AssetDetailView: View {
         .alert("确认删除", isPresented: $showingDeleteAlert) {
             Button("取消", role: .cancel) { }
             Button("删除", role: .destructive) {
+                // 删除资产
                 _ = assetRepository.deleteAsset(id: asset.wrappedId)
+                
+                // 手动刷新数据并返回上一页
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanged"), object: nil)
+                    assetRepository.refreshAssets()
+                    // 返回上一级页面
+                    dismiss()
+                }
             }
         } message: {
             Text("确定要删除\"\(asset.wrappedName)\"吗？该操作不可撤销。")
+        }
+        .onAppear {
+            // 每次视图出现时刷新数据
+            assetRepository.refreshAssets()
         }
     }
 }
