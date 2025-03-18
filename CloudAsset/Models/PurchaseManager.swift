@@ -183,7 +183,7 @@ class PurchaseManager: ObservableObject {
         if let product = products.first(where: { $0.id == Self.proVersionID }) {
             return product.displayPrice
         }
-        return "¥30.00" // 默认价格
+        return "¥6.00" // 默认价格
     }
 }
 
