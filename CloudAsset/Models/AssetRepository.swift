@@ -156,10 +156,8 @@ class AssetRepository: ObservableObject {
         
         asset.notes = notes
         
-        // 只在有新图片时更新图片
-        if let newImageData = imageData {
-            asset.imageData = newImageData
-        }
+        // 更新图片（无论是新增、修改还是删除）
+        asset.imageData = imageData // 直接赋值，当imageData为nil时会清除原有图片
         
         asset.currentlyInUse = currentlyInUse
         asset.updatedAt = Date()

@@ -61,6 +61,9 @@ struct AssetFormView: View {
     @State private var showingPhotoEditor = false
     @State private var imageToEdit: UIImage?
     
+    // 用于强制刷新视图
+    @State private var refreshID = UUID()
+    
     // 验证和错误
     @State private var showingErrors = false
     @State private var errorMessages: [String] = []
@@ -169,6 +172,8 @@ struct AssetFormView: View {
         
         // 确保图片数据被正确压缩和保存
         var finalImageData: Data?
+        
+        // 检查selectedImage是否存在，如果为nil则表示照片已被删除
         if let image = selectedImage {
             // 如果图片太大，进行压缩
             let maxDimension: CGFloat = 1200.0
@@ -193,11 +198,18 @@ struct AssetFormView: View {
             
             // 压缩图片数据
             finalImageData = processedImage.jpegData(compressionQuality: 0.8)
+        } else {
+            // 如果selectedImage为nil，则确保finalImageData也为nil (照片已被删除)
+            finalImageData = nil
+            print("照片已被删除，设置finalImageData为nil")
         }
         
         // 异步保存以避免UI阻塞
         DispatchQueue.global(qos: .userInitiated).async {
             var success = false
+            
+            // 添加调试日志
+            print("保存前的状态: selectedImage=\(self.selectedImage == nil ? "nil" : "有图片"), finalImageData=\(finalImageData == nil ? "nil" : "有数据")")
             
             switch self.mode {
             case .add:
@@ -319,22 +331,25 @@ struct AssetFormView: View {
                 HStack {
                     Spacer()
                     
-                    if let image = selectedImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 200)
-                            .cornerRadius(8)
-                            .onTapGesture {
-                                imageToEdit = image
-                                showingPhotoEditor = true
-                            }
-                    } else {
-                        Image(systemName: "photo")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                            .frame(height: 200)
+                    Group {
+                        if let image = selectedImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
+                                .cornerRadius(8)
+                                .onTapGesture {
+                                    imageToEdit = image
+                                    showingPhotoEditor = true
+                                }
+                        } else {
+                            Image(systemName: "photo")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
+                                .frame(height: 200)
+                        }
                     }
+                    .id(refreshID) // 使用ID强制在refreshID变化时重新渲染
                     
                     Spacer()
                 }
@@ -362,8 +377,32 @@ struct AssetFormView: View {
                     }
                     
                     Button(role: .destructive) {
-                        selectedImage = nil
-                        imageData = nil
+                        // 强制清空照片数据 - 确保所有相关变量都被设置为nil
+                        DispatchQueue.main.async {
+                            withAnimation {
+                                // 显式赋值为nil，确保状态被更新
+                                self.selectedImage = nil
+                                self.imageData = nil
+                                self.imageToEdit = nil
+                                
+                                // 重要：确保CoreData模型中的imageData会被正确清除
+                                if case .edit(let asset) = self.mode {
+                                    print("正在编辑资产，标记照片已删除")
+                                }
+                                
+                                // 刷新视图ID以强制重新渲染
+                                self.refreshID = UUID()
+                                
+                                // 添加一个debugPrint用于检查状态清除是否正确执行
+                                print("照片已删除，当前状态: selectedImage=\(self.selectedImage == nil ? "nil" : "not nil"), imageData=\(self.imageData == nil ? "nil" : "not nil")")
+                                
+                                // 延迟再次刷新，确保UI更新
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    self.refreshID = UUID()
+                                    print("延迟刷新执行")
+                                }
+                            }
+                        }
                     } label: {
                         HStack {
                             Image(systemName: "trash")
@@ -373,6 +412,7 @@ struct AssetFormView: View {
                     }
                 }
             }
+            .id(refreshID) // 整个Section都使用同一个ID以确保完全刷新
             
             // 备注部分
             Section(header: Text("备注")) {
