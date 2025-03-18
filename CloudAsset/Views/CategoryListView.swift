@@ -166,10 +166,10 @@ struct CategoryFormView: View {
         // 电子设备类
         ("laptopcomputer", "笔记本"), ("desktopcomputer", "台式机"), ("tv", "电视"), ("display", "显示器"), ("headphones", "耳机"),
         ("phone", "手机"), ("iphone", "iPhone"), ("ipad", "iPad"), ("applewatch", "智能表"), ("airpods", "耳机"), ("homepod.fill", "音箱"),
-        ("gamecontroller", "游戏机"), ("camera", "相机"), ("video", "摄像机"), ("printer", "打印机"), ("keyboard", "键盘"), ("mouse", "鼠标"),
+        ("gamecontroller", "游戏机"), ("camera", "相机"), ("video", "摄像机"), ("printer", "打印机"), ("keyboard", "键盘"), ("computermouse", "鼠标"),
         
         // 家居类
-        ("house", "房屋"), ("bed.double", "床"), ("sofa", "沙发"), ("chair", "椅子"), ("table.furniture", "桌子"), ("lamp", "灯"), 
+        ("house", "房屋"), ("bed.double", "床"), ("sofa", "沙发"), ("chair", "椅子"), ("table.furniture", "桌子"), ("lightbulb", "灯"), 
         ("tv.and.mediabox", "影音"), ("refrigerator", "冰箱"), ("oven", "烤箱"), ("washer", "洗衣机"), ("microwave", "微波炉"),
         
         // 交通工具
@@ -184,10 +184,10 @@ struct CategoryFormView: View {
         ("paperclip", "回形针"), ("ruler", "尺子"), ("pencil", "铅笔"), ("highlighter", "荧光笔"), ("scissors", "剪刀"), ("paintbrush", "画笔"),
         
         // 服装/个人物品
-        ("tshirt", "衣服"), ("backpack", "背包"), ("handbag", "手提包"), ("eyeglasses", "眼镜"), ("watch", "手表"), ("shoe", "鞋子"),
+        ("tshirt", "衣服"), ("backpack", "背包"), ("handbag", "手提包"), ("eyeglasses", "眼镜"), ("clock", "手表"), ("shoe", "鞋子"),
         
         // 工具
-        ("hammer", "锤子"), ("wrench", "扳手"), ("screwdriver", "螺丝刀"), ("powerplug", "电源"), ("lightbulb", "灯泡"), ("battery.100", "电池"),
+        ("hammer", "锤子"), ("wrench", "扳手"), ("screwdriver", "螺丝刀"), ("powerplug", "电源"), ("lightbulb.fill", "灯泡"), ("battery.100", "电池"),
         
         // 收藏品
         ("photo", "照片"), ("film", "胶片"), ("guitars", "吉他"), ("pianokeys", "钢琴"), ("book.closed", "藏书"), ("medal", "奖牌"),
