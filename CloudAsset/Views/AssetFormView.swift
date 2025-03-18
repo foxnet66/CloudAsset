@@ -297,11 +297,6 @@ struct AssetFormView: View {
         }
         .onAppear {
             loadExistingData()
-            cameraManager.startSession()
-            // 添加延迟，给相机初始化一些时间
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                isInitializing = false
-            }
         }
         .sheet(isPresented: $showingImagePicker) {
             PhotosPicker(selectedImage: $selectedImage)
