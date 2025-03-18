@@ -155,9 +155,21 @@ struct SettingsView: View {
                 }
                 
                 Button {
-                    showingExportOptions = true
+                    if purchaseManager.isPro {
+                        showingExportOptions = true
+                    } else {
+                        showingProUpgrade = true
+                    }
                 } label: {
-                    Label("导出数据", systemImage: "arrow.up.doc")
+                    HStack {
+                        Label("导出数据", systemImage: "arrow.up.doc")
+                        Spacer()
+                        if !purchaseManager.isPro {
+                            Image(systemName: "crown")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                        }
+                    }
                 }
                 
                 NavigationLink {
@@ -235,10 +247,14 @@ struct SettingsView: View {
                 exportText = exportToCSV()
                 showingExportResult = true
             }
-            Button("导出JSON") {
-                exportText = exportToJSON()
-                showingExportResult = true
+            
+            if purchaseManager.isPro {
+                Button("导出JSON") {
+                    exportText = exportToJSON()
+                    showingExportResult = true
+                }
             }
+            
             Button("取消", role: .cancel) {}
         }
         .alert("导出数据", isPresented: $showingExportResult) {
@@ -246,8 +262,23 @@ struct SettingsView: View {
             Button("复制到剪贴板") {
                 UIPasteboard.general.string = exportText
             }
+            
+            if !purchaseManager.isPro {
+                Button("升级专业版") {
+                    showingProUpgrade = true
+                }
+            }
         } message: {
-            Text("数据已成功导出。您可以复制到剪贴板使用。")
+            VStack(alignment: .leading) {
+                Text("数据已成功导出。您可以复制到剪贴板使用。")
+                
+                if !purchaseManager.isPro {
+                    Text("升级到专业版后，可以导出为JSON格式，并获得更多数据分析功能。")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .padding(.top, 8)
+                }
+            }
         }
         .alert(isPresented: .constant(purchaseManager.purchaseError != nil)) {
             Alert(
