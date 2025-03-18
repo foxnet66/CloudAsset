@@ -44,6 +44,14 @@ class PurchaseManager: ObservableObject {
         }
     }
     
+    // *** 添加测试方法：快速切换专业版状态 ***
+    @MainActor
+    func toggleProStatusForTesting() {
+        self.isPro = !self.isPro
+        UserDefaults.standard.set(self.isPro, forKey: "isPro")
+        print("测试模式：已\(self.isPro ? "启用" : "禁用")专业版")
+    }
+    
     // 监听交易
     private func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {

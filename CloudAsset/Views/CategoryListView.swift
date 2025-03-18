@@ -232,21 +232,32 @@ struct CategoryFormView: View {
             }
             
             Section(header: Text("图标")) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))]) {
-                    ForEach(iconOptions, id: \.self) { iconName in
-                        Button {
-                            icon = iconName
-                        } label: {
-                            Image(systemName: iconName)
-                                .font(.title2)
-                                .frame(width: 44, height: 44)
-                                .background(icon == iconName ? Color.blue.opacity(0.2) : Color.clear)
-                                .foregroundColor(icon == iconName ? .blue : .primary)
-                                .cornerRadius(8)
+                ScrollView {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 10) {
+                        ForEach(0..<iconOptions.count, id: \.self) { index in
+                            let iconName = iconOptions[index]
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(icon == iconName ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                    .frame(width: 50, height: 50)
+                                
+                                Image(systemName: iconName)
+                                    .font(.title2)
+                                    .foregroundColor(icon == iconName ? .blue : .primary)
+                            }
+                            .onTapGesture {
+                                withAnimation {
+                                    self.icon = iconName
+                                    print("选择了图标: \(iconName)，索引: \(index)")
+                                }
+                            }
+                            .id("icon_\(iconName)_\(index)")
                         }
                     }
                 }
+                .padding(.vertical, 5)
             }
+            .frame(maxHeight: 300)
             
             Section(header: Text("备注")) {
                 TextEditor(text: $notes)
