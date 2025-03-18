@@ -12,6 +12,23 @@ struct AssetListView: View {
     @State private var refreshTrigger = UUID() // 使用UUID来强制视图更新
     @State private var isManuallyRefreshing = false // 记录是否正在手动刷新
     
+    // 异步刷新方法，返回Task以支持取消
+    private func performRefresh() async {
+        isManuallyRefreshing = true
+        
+        // 调用刷新资产
+        assetRepository.refreshAssets()
+        
+        // 等待一小段时间，给UI足够的时间响应
+        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+        
+        // 使用主线程更新UI状态
+        await MainActor.run {
+            refreshTrigger = UUID()
+            isManuallyRefreshing = false
+        }
+    }
+    
     private var filteredAssets: [Asset] {
         var result = assetRepository.assets
         
@@ -92,13 +109,7 @@ struct AssetListView: View {
             .id(refreshTrigger) // 使用id修饰符强制整个列表刷新
             .refreshable {
                 // 添加下拉刷新功能
-                isManuallyRefreshing = true
-                assetRepository.refreshAssets()
-                
-                // 等待一段时间或等待刷新完成
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
-                refreshTrigger = UUID() // 强制更新视图
-                isManuallyRefreshing = false
+                await performRefresh()
             }
             .searchable(text: $searchText, prompt: "搜索资产")
             .overlay {
@@ -132,13 +143,8 @@ struct AssetListView: View {
                     // 添加刷新按钮
                     Button {
                         // 手动刷新数据
-                        isManuallyRefreshing = true
-                        assetRepository.refreshAssets()
-                        
-                        // 短暂延迟后更新UI
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            refreshTrigger = UUID()
-                            isManuallyRefreshing = false
+                        Task {
+                            await performRefresh()
                         }
                     } label: {
                         if isManuallyRefreshing {
@@ -181,20 +187,14 @@ struct AssetListView: View {
         }
         .onAppear {
             // 每次视图出现时刷新数据
-            assetRepository.refreshAssets()
-            
-            // 短暂延迟后更新UI
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                refreshTrigger = UUID()
+            Task {
+                await performRefresh()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AssetDataChanged"))) { _ in
             // 接收到数据变化通知后刷新
-            assetRepository.refreshAssets()
-            
-            // 短暂延迟后更新UI
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                refreshTrigger = UUID()
+            Task {
+                await performRefresh()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AssetDataChanging"))) { _ in

@@ -229,6 +229,22 @@ struct CategoryStat: Identifiable {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale.current
+        
+        // 针对大金额使用更简洁的格式
+        if totalValue >= 1_000_000 {
+            // 对于超过百万的金额，显示为X.XX M（百万）
+            let millionValue = totalValue / 1_000_000
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
+        } else if totalValue >= 10_000 {
+            // 对于超过1万的金额，显示为X.X K（千）
+            let thousandValue = totalValue / 1_000
+            formatter.maximumFractionDigits = 1
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
+        }
+        
         return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
     }
 }
@@ -243,6 +259,22 @@ struct PriceRangeStat: Identifiable {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale.current
+        
+        // 针对大金额使用更简洁的格式
+        if totalValue >= 1_000_000 {
+            // 对于超过百万的金额，显示为X.XX M（百万）
+            let millionValue = totalValue / 1_000_000
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
+        } else if totalValue >= 10_000 {
+            // 对于超过1万的金额，显示为X.X K（千）
+            let thousandValue = totalValue / 1_000
+            formatter.maximumFractionDigits = 1
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
+        }
+        
         return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
     }
 }
@@ -257,6 +289,22 @@ struct TimeDistributionStat: Identifiable {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale.current
+        
+        // 针对大金额使用更简洁的格式
+        if totalValue >= 1_000_000 {
+            // 对于超过百万的金额，显示为X.XX M（百万）
+            let millionValue = totalValue / 1_000_000
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
+        } else if totalValue >= 10_000 {
+            // 对于超过1万的金额，显示为X.X K（千）
+            let thousandValue = totalValue / 1_000
+            formatter.maximumFractionDigits = 1
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
+        }
+        
         return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
     }
 }
@@ -273,6 +321,22 @@ struct OverviewCard: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale.current
+        
+        // 针对大金额使用更简洁的格式
+        if totalValue >= 1_000_000 {
+            // 对于超过百万的金额，显示为X.XX M（百万）
+            let millionValue = totalValue / 1_000_000
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 2
+            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
+        } else if totalValue >= 10_000 {
+            // 对于超过1万的金额，显示为X.XX K（千）
+            let thousandValue = totalValue / 1_000
+            formatter.maximumFractionDigits = 1
+            formatter.minimumFractionDigits = 1
+            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
+        }
+        
         return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
     }
     
@@ -282,7 +346,7 @@ struct OverviewCard: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            HStack(spacing: 20) {
+            HStack(spacing: 10) {
                 StatItem(title: "总数量", value: "\(assetCount)", systemImage: "number", color: .blue)
                 
                 StatItem(title: "总价值", value: formattedTotalValue, systemImage: "dollarsign.circle", color: .green)
@@ -311,6 +375,9 @@ struct StatItem: View {
             
             Text(value)
                 .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity)
             
             Text(title)
                 .font(.caption)
@@ -449,7 +516,7 @@ struct CategoryChartView: View {
                     Text("总价值")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .frame(width: 80, alignment: .trailing)
+                        .frame(width: 100, alignment: .trailing)
                 }
                 
                 Divider()
@@ -467,7 +534,9 @@ struct CategoryChartView: View {
                         
                         Text(stat.formattedValue)
                             .font(.subheadline)
-                            .frame(width: 80, alignment: .trailing)
+                            .frame(width: 100, alignment: .trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     
                     Divider()
@@ -519,7 +588,7 @@ struct PriceRangeChartView: View {
                     Text("总价值")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .frame(width: 80, alignment: .trailing)
+                        .frame(width: 100, alignment: .trailing)
                 }
                 
                 Divider()
@@ -536,7 +605,9 @@ struct PriceRangeChartView: View {
                         
                         Text(stat.formattedValue)
                             .font(.subheadline)
-                            .frame(width: 80, alignment: .trailing)
+                            .frame(width: 100, alignment: .trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     
                     Divider()
@@ -599,7 +670,7 @@ struct TimeDistributionChartView: View {
                     Text("总价值")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .frame(width: 80, alignment: .trailing)
+                        .frame(width: 100, alignment: .trailing)
                 }
                 
                 Divider()
@@ -616,7 +687,9 @@ struct TimeDistributionChartView: View {
                         
                         Text(stat.formattedValue)
                             .font(.subheadline)
-                            .frame(width: 80, alignment: .trailing)
+                            .frame(width: 100, alignment: .trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     
                     Divider()

@@ -371,12 +371,25 @@ class AssetRepository: ObservableObject {
     func refreshAssets() {
         print("开始刷新资产数据...")
         
+        // 调度通知，告知视图数据正在刷新
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: NSNotification.Name("AssetDataChanging"), object: nil)
+        }
+        
         // 强制使用新的后台上下文来获取数据，避免缓存问题
         let backgroundContext = PersistenceController.shared.container.newBackgroundContext()
         backgroundContext.automaticallyMergesChangesFromParent = true
         
         // 在后台队列中执行数据刷新，避免UI阻塞
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                // 如果self已被释放，发送完成通知以解除阻塞
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
+                }
+                return
+            }
+            
             // 在后台上下文中获取最新数据
             let fetchRequest: NSFetchRequest<Asset> = Asset.fetchRequest()
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Asset.name, ascending: true)]
@@ -387,7 +400,11 @@ class AssetRepository: ObservableObject {
                 
                 // 在主线程中更新数据
                 DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
+                    guard let self = self else {
+                        // 确保发送完成通知
+                        NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
+                        return
+                    }
                     
                     // 将获取的数据转换为主上下文中的对象
                     var updatedAssets: [Asset] = []
@@ -398,22 +415,16 @@ class AssetRepository: ObservableObject {
                         }
                     }
                     
-                    // 重置和更新集合，触发UI更新
-                    self.assets = []
+                    // 更新集合并触发UI更新
+                    self.assets = updatedAssets
                     
-                    // 使用微小延迟，确保UI能捕获到变化
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // 更新集合
-                        self.assets = updatedAssets
-                        
-                        // 更新统计数据
-                        self.updateStatistics()
-                        
-                        print("资产数据刷新完成。获取到 \(self.assets.count) 个资产。")
-                        
-                        // 发送完成通知
-                        NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
-                    }
+                    // 更新统计数据
+                    self.updateStatistics()
+                    
+                    print("资产数据刷新完成。获取到 \(self.assets.count) 个资产。")
+                    
+                    // 发送完成通知
+                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
                 }
                 
                 // 刷新类别数据
@@ -440,6 +451,10 @@ class AssetRepository: ObservableObject {
                 }
             } catch {
                 print("刷新资产数据失败: \(error)")
+                // 确保即使出错也发送完成通知
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("AssetDataRefreshCompleted"), object: nil)
+                }
             }
         }
     }
