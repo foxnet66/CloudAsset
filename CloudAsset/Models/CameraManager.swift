@@ -19,6 +19,16 @@ class CameraManager: NSObject, ObservableObject {
         checkPermissions()
     }
     
+    // 重置相机状态，清除之前的照片数据
+    func resetCamera() {
+        DispatchQueue.main.async {
+            print("重置相机状态")
+            self.photoData = nil
+            self.previewImage = nil
+            self.errorMessage = nil
+        }
+    }
+    
     // 检查相机和照片库权限
     func checkPermissions() {
         // 相机权限
