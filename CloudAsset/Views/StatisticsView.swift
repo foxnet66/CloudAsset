@@ -7,6 +7,32 @@ struct StatisticsView: View {
     @State private var selectedTimeRange: TimeRange = .allTime
     @State private var selectedChartType: ChartType = .category
     
+    // 通用货币格式化函数，确保整个应用使用统一的货币符号
+    static func formatCurrency(_ value: Double, useShortFormat: Bool = false) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale(identifier: "en_US") // 使用美元符号 $
+        
+        // 针对大金额使用更简洁的格式
+        if useShortFormat {
+            if value >= 1_000_000 {
+                // 对于超过百万的金额，显示为X.XX M（百万）
+                let millionValue = value / 1_000_000
+                formatter.maximumFractionDigits = 2
+                formatter.minimumFractionDigits = 1
+                return (formatter.string(from: NSNumber(value: millionValue)) ?? "$0.00") + " M"
+            } else if value >= 10_000 {
+                // 对于超过1万的金额，显示为X.X K（千）
+                let thousandValue = value / 1_000
+                formatter.maximumFractionDigits = 1
+                formatter.minimumFractionDigits = 1
+                return (formatter.string(from: NSNumber(value: thousandValue)) ?? "$0.00") + " K"
+            }
+        }
+        
+        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+    }
+    
     // 时间范围枚举
     enum TimeRange: String, CaseIterable, Identifiable {
         case lastMonth = "近30天"
@@ -77,12 +103,12 @@ struct StatisticsView: View {
     private var priceRangeStats: [PriceRangeStat] {
         // 定义价格区间
         let ranges: [(min: Double, max: Double, label: String)] = [
-            (0, 100, "¥0-100"),
-            (100, 500, "¥100-500"),
-            (500, 1000, "¥500-1000"),
-            (1000, 5000, "¥1000-5000"),
-            (5000, 10000, "¥5000-10000"),
-            (10000, Double.infinity, "¥10000+")
+            (0, 100, "$0-100"),
+            (100, 500, "$100-500"),
+            (500, 1000, "$500-1000"),
+            (1000, 5000, "$1000-5000"),
+            (5000, 10000, "$5000-10000"),
+            (10000, Double.infinity, "$10000+")
         ]
         
         var stats: [PriceRangeStat] = []
@@ -226,26 +252,7 @@ struct CategoryStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        
-        // 针对大金额使用更简洁的格式
-        if totalValue >= 1_000_000 {
-            // 对于超过百万的金额，显示为X.XX M（百万）
-            let millionValue = totalValue / 1_000_000
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
-        } else if totalValue >= 10_000 {
-            // 对于超过1万的金额，显示为X.X K（千）
-            let thousandValue = totalValue / 1_000
-            formatter.maximumFractionDigits = 1
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
-        }
-        
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
+        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
     }
 }
 
@@ -256,26 +263,7 @@ struct PriceRangeStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        
-        // 针对大金额使用更简洁的格式
-        if totalValue >= 1_000_000 {
-            // 对于超过百万的金额，显示为X.XX M（百万）
-            let millionValue = totalValue / 1_000_000
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
-        } else if totalValue >= 10_000 {
-            // 对于超过1万的金额，显示为X.X K（千）
-            let thousandValue = totalValue / 1_000
-            formatter.maximumFractionDigits = 1
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
-        }
-        
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
+        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
     }
 }
 
@@ -286,26 +274,7 @@ struct TimeDistributionStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        
-        // 针对大金额使用更简洁的格式
-        if totalValue >= 1_000_000 {
-            // 对于超过百万的金额，显示为X.XX M（百万）
-            let millionValue = totalValue / 1_000_000
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
-        } else if totalValue >= 10_000 {
-            // 对于超过1万的金额，显示为X.X K（千）
-            let thousandValue = totalValue / 1_000
-            formatter.maximumFractionDigits = 1
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
-        }
-        
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
+        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
     }
 }
 
@@ -318,26 +287,7 @@ struct OverviewCard: View {
     let inUseCount: Int
     
     private var formattedTotalValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        
-        // 针对大金额使用更简洁的格式
-        if totalValue >= 1_000_000 {
-            // 对于超过百万的金额，显示为X.XX M（百万）
-            let millionValue = totalValue / 1_000_000
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 2
-            return (formatter.string(from: NSNumber(value: millionValue)) ?? "¥0.00") + " M"
-        } else if totalValue >= 10_000 {
-            // 对于超过1万的金额，显示为X.XX K（千）
-            let thousandValue = totalValue / 1_000
-            formatter.maximumFractionDigits = 1
-            formatter.minimumFractionDigits = 1
-            return (formatter.string(from: NSNumber(value: thousandValue)) ?? "¥0.00") + " K"
-        }
-        
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
+        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
     }
     
     var body: some View {
