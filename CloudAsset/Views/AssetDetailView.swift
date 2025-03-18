@@ -3,12 +3,15 @@ import SwiftUI
 struct AssetDetailView: View {
     @EnvironmentObject private var assetRepository: AssetRepository
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     
     let asset: Asset
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var showingImageViewer = false
     @State private var selectedImage: UIImage?
+    @State private var showingShareSheet = false
+    @State private var refreshID = UUID()
     
     // 格式化日期的辅助方法
     private let dateFormatter: DateFormatter = {
@@ -147,6 +150,7 @@ struct AssetDetailView: View {
             }
             .padding()
         }
+        .id(refreshID)
         .navigationTitle(asset.wrappedName)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -195,6 +199,10 @@ struct AssetDetailView: View {
         .onAppear {
             // 每次视图出现时刷新数据
             assetRepository.refreshAssets()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CurrencyChanged"))) { _ in
+            // 货币设置改变时，通过更新refreshID来强制视图刷新
+            refreshID = UUID()
         }
     }
 }

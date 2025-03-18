@@ -11,6 +11,7 @@ struct AssetListView: View {
     @State private var filterByInUse = false
     @State private var refreshTrigger = UUID() // 使用UUID来强制视图更新
     @State private var isManuallyRefreshing = false // 记录是否正在手动刷新
+    @State private var refreshID = UUID() // 添加一个用于刷新视图的ID
     
     // 异步刷新方法，返回Task以支持取消
     private func performRefresh() async {
@@ -205,6 +206,10 @@ struct AssetListView: View {
             // 数据刷新完成后更新UI
             refreshTrigger = UUID()
             isManuallyRefreshing = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CurrencyChanged"))) { _ in
+            // 货币设置改变时，通过更新refreshID来强制视图刷新
+            refreshID = UUID()
         }
     }
 }

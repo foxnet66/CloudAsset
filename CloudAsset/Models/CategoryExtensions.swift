@@ -43,10 +43,7 @@ extension Category {
     }
     
     var formattedTotalValue: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: totalValue)) ?? "¥0.00"
+        return CurrencyFormatter.format(totalValue)
     }
     
     // 计算该类别下正在使用的资产数量

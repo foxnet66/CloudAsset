@@ -33,10 +33,7 @@ extension Asset {
     
     // 计算属性
     var formattedPrice: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: price)) ?? "¥0.00"
+        return CurrencyFormatter.format(price)
     }
     
     var usageDays: Int {
@@ -50,10 +47,7 @@ extension Asset {
     }
     
     var formattedDailyAveragePrice: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        return formatter.string(from: NSNumber(value: dailyAveragePrice)) ?? "¥0.00"
+        return CurrencyFormatter.format(dailyAveragePrice)
     }
     
     var remainingUsesCount: Int32 {

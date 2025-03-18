@@ -3,12 +3,14 @@ import SwiftUI
 struct CategoryListView: View {
     @EnvironmentObject private var assetRepository: AssetRepository
     @EnvironmentObject private var purchaseManager: PurchaseManager
+    @Environment(\.managedObjectContext) private var viewContext
     
     @State private var showingAddSheet = false
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var showingProUpgrade = false
     @State private var selectedCategory: Category?
+    @State private var refreshID = UUID()
     
     var body: some View {
         List {
@@ -77,6 +79,7 @@ struct CategoryListView: View {
                 }
             }
         }
+        .id(refreshID)
         .navigationTitle("资产类别")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -117,6 +120,9 @@ struct CategoryListView: View {
             } else {
                 Text("确定要删除此类别吗？该类别下的所有资产也将被删除。")
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CurrencyChanged"))) { _ in
+            refreshID = UUID()
         }
     }
     

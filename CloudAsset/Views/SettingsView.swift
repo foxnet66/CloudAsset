@@ -1,5 +1,50 @@
 import SwiftUI
 
+// 货币类型枚举
+enum CurrencyType: String, CaseIterable, Identifiable {
+    case usd = "美元 ($)"
+    case cny = "人民币 (¥)"
+    case eur = "欧元 (€)"
+    case gbp = "英镑 (£)"
+    case jpy = "日元 (¥)"
+    
+    var id: String { self.rawValue }
+    
+    // 货币符号
+    var symbol: String {
+        switch self {
+        case .usd: return "$"
+        case .cny: return "¥"
+        case .eur: return "€"
+        case .gbp: return "£"
+        case .jpy: return "¥"
+        }
+    }
+    
+    // 对应的Locale
+    var locale: String {
+        switch self {
+        case .usd: return "en_US"
+        case .cny: return "zh_CN" 
+        case .eur: return "fr_FR" // 使用法国作为欧元区代表
+        case .gbp: return "en_GB"
+        case .jpy: return "ja_JP"
+        }
+    }
+}
+
+// 添加UserDefaults扩展，用于保存和获取货币设置
+extension UserDefaults {
+    private enum Keys {
+        static let selectedCurrencyLocale = "selectedCurrencyLocale"
+    }
+    
+    var selectedCurrencyLocale: String {
+        get { string(forKey: Keys.selectedCurrencyLocale) ?? CurrencyType.usd.locale }
+        set { set(newValue, forKey: Keys.selectedCurrencyLocale) }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @EnvironmentObject private var assetRepository: AssetRepository
@@ -9,6 +54,13 @@ struct SettingsView: View {
     @State private var showingExportOptions = false
     @State private var exportText = ""
     @State private var showingExportResult = false
+    
+    // 添加货币选择相关状态
+    @State private var selectedCurrency: CurrencyType = {
+        let savedLocale = UserDefaults.standard.selectedCurrencyLocale
+        return CurrencyType.allCases.first { $0.locale == savedLocale } ?? .usd
+    }()
+    @State private var showingCurrencyPicker = false
     
     // 获取App版本
     private var appVersion: String {
@@ -90,6 +142,18 @@ struct SettingsView: View {
             
             // 数据管理
             Section(header: Text("数据管理")) {
+                // 添加货币设置选项
+                Button {
+                    showingCurrencyPicker = true
+                } label: {
+                    HStack {
+                        Label("货币", systemImage: "dollarsign.circle")
+                        Spacer()
+                        Text(selectedCurrency.rawValue)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
                 Button {
                     showingExportOptions = true
                 } label: {
@@ -125,6 +189,39 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingAbout) {
             AboutView()
+        }
+        .sheet(isPresented: $showingCurrencyPicker) {
+            NavigationStack {
+                List {
+                    ForEach(CurrencyType.allCases) { currency in
+                        Button(action: {
+                            selectedCurrency = currency
+                            UserDefaults.standard.selectedCurrencyLocale = currency.locale
+                            NotificationCenter.default.post(name: Notification.Name("CurrencyChanged"), object: nil)
+                            showingCurrencyPicker = false
+                        }) {
+                            HStack {
+                                Text(currency.rawValue)
+                                Spacer()
+                                if currency == selectedCurrency {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                .navigationTitle("选择货币")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("完成") {
+                            showingCurrencyPicker = false
+                        }
+                    }
+                }
+            }
         }
         .alert("导出选项", isPresented: $showingExportOptions) {
             Button("导出CSV") {

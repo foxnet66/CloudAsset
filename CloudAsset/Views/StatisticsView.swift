@@ -6,32 +6,7 @@ struct StatisticsView: View {
     
     @State private var selectedTimeRange: TimeRange = .allTime
     @State private var selectedChartType: ChartType = .category
-    
-    // 通用货币格式化函数，确保整个应用使用统一的货币符号
-    static func formatCurrency(_ value: Double, useShortFormat: Bool = false) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "en_US") // 使用美元符号 $
-        
-        // 针对大金额使用更简洁的格式
-        if useShortFormat {
-            if value >= 1_000_000 {
-                // 对于超过百万的金额，显示为X.XX M（百万）
-                let millionValue = value / 1_000_000
-                formatter.maximumFractionDigits = 2
-                formatter.minimumFractionDigits = 1
-                return (formatter.string(from: NSNumber(value: millionValue)) ?? "$0.00") + " M"
-            } else if value >= 10_000 {
-                // 对于超过1万的金额，显示为X.X K（千）
-                let thousandValue = value / 1_000
-                formatter.maximumFractionDigits = 1
-                formatter.minimumFractionDigits = 1
-                return (formatter.string(from: NSNumber(value: thousandValue)) ?? "$0.00") + " K"
-            }
-        }
-        
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
-    }
+    @State private var refreshID = UUID() // 添加一个用于强制刷新视图的ID
     
     // 时间范围枚举
     enum TimeRange: String, CaseIterable, Identifiable {
@@ -72,6 +47,10 @@ struct StatisticsView: View {
         }
     }
     
+    private var totalAssetsValue: Double {
+        filteredAssets.reduce(0) { $0 + $1.price }
+    }
+    
     // 类别统计数据
     private var categoryStats: [CategoryStat] {
         var stats: [CategoryStat] = []
@@ -101,14 +80,17 @@ struct StatisticsView: View {
     
     // 价格区间统计数据
     private var priceRangeStats: [PriceRangeStat] {
+        // 获取当前货币符号
+        let currencySymbol = CurrencyFormatter.currencySymbol
+        
         // 定义价格区间
         let ranges: [(min: Double, max: Double, label: String)] = [
-            (0, 100, "$0-100"),
-            (100, 500, "$100-500"),
-            (500, 1000, "$500-1000"),
-            (1000, 5000, "$1000-5000"),
-            (5000, 10000, "$5000-10000"),
-            (10000, Double.infinity, "$10000+")
+            (0, 100, "\(currencySymbol)0-100"),
+            (100, 500, "\(currencySymbol)100-500"),
+            (500, 1000, "\(currencySymbol)500-1000"),
+            (1000, 5000, "\(currencySymbol)1000-5000"),
+            (5000, 10000, "\(currencySymbol)5000-10000"),
+            (10000, Double.infinity, "\(currencySymbol)10000+")
         ]
         
         var stats: [PriceRangeStat] = []
@@ -176,7 +158,7 @@ struct StatisticsView: View {
                 // 总览卡片
                 OverviewCard(
                     assetCount: filteredAssets.count,
-                    totalValue: filteredAssets.reduce(0) { $0 + $1.price },
+                    totalValue: totalAssetsValue,
                     inUseCount: filteredAssets.filter { $0.currentlyInUse }.count
                 )
                 .padding(.horizontal)
@@ -231,7 +213,12 @@ struct StatisticsView: View {
             }
             .padding(.vertical)
         }
+        .id(refreshID) // 添加ID修饰符，确保整个视图在refreshID变化时刷新
         .navigationTitle("资产统计")
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CurrencyChanged"))) { _ in
+            // 货币设置改变时，通过更新refreshID来强制视图刷新
+            refreshID = UUID()
+        }
     }
 }
 
@@ -252,7 +239,7 @@ struct CategoryStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
+        return CurrencyFormatter.formatShort(totalValue)
     }
 }
 
@@ -263,7 +250,7 @@ struct PriceRangeStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
+        return CurrencyFormatter.formatShort(totalValue)
     }
 }
 
@@ -274,7 +261,7 @@ struct TimeDistributionStat: Identifiable {
     let totalValue: Double
     
     var formattedValue: String {
-        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
+        return CurrencyFormatter.formatShort(totalValue)
     }
 }
 
@@ -287,7 +274,7 @@ struct OverviewCard: View {
     let inUseCount: Int
     
     private var formattedTotalValue: String {
-        return StatisticsView.formatCurrency(totalValue, useShortFormat: true)
+        return CurrencyFormatter.formatShort(totalValue)
     }
     
     var body: some View {
