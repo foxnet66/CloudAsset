@@ -97,7 +97,7 @@ class AssetRepository: ObservableObject {
     }
     
     // 添加新资产
-    func addAsset(name: String, categoryId: UUID, price: Double, purchaseDate: Date, warrantyEndDate: Date?, totalUses: Int32?, notes: String?, imageData: Data?) -> Asset? {
+    func addAsset(name: String, categoryId: UUID, price: Double, purchaseDate: Date, warrantyEndDate: Date?, totalUses: Int32?, notes: String?, imageData: Data?, currentlyInUse: Bool = false) -> Asset? {
         // 检查免费版限制
         if purchaseManager.hasReachedFreeLimit(assetCount: totalAssetCount) {
             return nil
@@ -114,7 +114,7 @@ class AssetRepository: ObservableObject {
         asset.remainingUses = totalUses ?? 0
         asset.notes = notes
         asset.imageData = imageData
-        asset.currentlyInUse = false
+        asset.currentlyInUse = currentlyInUse
         asset.createdAt = Date()
         asset.updatedAt = Date()
         

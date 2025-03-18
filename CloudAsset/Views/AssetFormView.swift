@@ -221,7 +221,8 @@ struct AssetFormView: View {
                     warrantyEndDate: warrantyDate,
                     totalUses: totalUsesValue,
                     notes: self.notes.isEmpty ? nil : self.notes,
-                    imageData: finalImageData
+                    imageData: finalImageData,
+                    currentlyInUse: self.currentlyInUse
                 ) != nil {
                     success = true
                 }
