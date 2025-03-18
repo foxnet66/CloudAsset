@@ -59,12 +59,8 @@ struct CategoryListView: View {
                     if purchaseManager.isPro {
                         Button(role: .destructive) {
                             selectedCategory = category
-                            // 如果没有资产可以直接删除，否则显示警告
-                            if category.assetArray.isEmpty {
-                                deleteCategory()
-                            } else {
-                                showingDeleteAlert = true
-                            }
+                            // 显示删除确认对话框
+                            showingDeleteAlert = true
                         } label: {
                             Label("删除", systemImage: "trash")
                         }
@@ -116,9 +112,13 @@ struct CategoryListView: View {
             }
         } message: {
             if let category = selectedCategory {
-                Text("确定要删除\"\(category.wrappedName)\"类别吗？该类别下的所有资产也将被删除。")
+                if category.assetArray.count > 0 {
+                    Text("确定要删除\"\(category.wrappedName)\"类别吗？该类别下的\(category.assetArray.count)个资产也将被永久删除。")
+                } else {
+                    Text("确定要删除\"\(category.wrappedName)\"类别吗？")
+                }
             } else {
-                Text("确定要删除此类别吗？该类别下的所有资产也将被删除。")
+                Text("确定要删除此类别吗？")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("CurrencyChanged"))) { _ in
@@ -128,7 +128,30 @@ struct CategoryListView: View {
     
     private func deleteCategory() {
         if let category = selectedCategory {
-            _ = assetRepository.deleteCategory(id: category.wrappedId)
+            let success = assetRepository.deleteCategory(id: category.wrappedId)
+            
+            // 添加删除结果反馈
+            if success {
+                // 成功删除后刷新UI
+                DispatchQueue.main.async {
+                    // 发送通知，通知列表页准备刷新
+                    NotificationCenter.default.post(name: Notification.Name("AssetDataChanging"), object: nil)
+                    
+                    // 刷新ID以强制重新渲染列表
+                    self.refreshID = UUID()
+                    
+                    // 短暂延迟后再次通知列表页刷新数据已完成
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        NotificationCenter.default.post(name: Notification.Name("AssetDataChanged"), object: nil)
+                    }
+                }
+            } else {
+                // 如果删除失败，可以在这里添加错误提示
+                print("类别删除失败，请稍后再试")
+            }
+            
+            // 清空选中的类别
+            selectedCategory = nil
         }
     }
 }

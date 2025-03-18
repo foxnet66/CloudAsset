@@ -298,24 +298,35 @@ class AssetRepository: ObservableObject {
     func deleteCategory(id: UUID) -> Bool {
         // 仅专业版可删除自定义类别
         if !purchaseManager.isPro {
+            print("删除类别失败: 非专业版用户")
             return false
         }
         
         guard let category = categories.first(where: { $0.wrappedId == id }) else {
+            print("删除类别失败: 找不到指定ID的类别")
             return false
         }
         
-        // 检查类别下是否有资产
+        // 如果类别下有资产，先删除所有资产
         if let assets = category.assets as? Set<Asset>, !assets.isEmpty {
-            return false
+            print("正在删除类别及其\(assets.count)个资产...")
+            // 删除类别下的所有资产
+            for asset in assets {
+                context.delete(asset)
+            }
         }
         
+        // 删除类别
         context.delete(category)
         
         // 保存
         do {
             try context.save()
-            loadData() // 重新加载数据
+            print("类别删除成功")
+            // 延迟加载数据，确保UI更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.loadData() // 重新加载数据
+            }
             return true
         } catch {
             print("删除类别失败: \(error)")

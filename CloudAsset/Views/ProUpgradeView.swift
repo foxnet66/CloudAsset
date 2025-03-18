@@ -32,7 +32,7 @@ struct ProUpgradeView: View {
                         FeatureComparisonRow(title: "类别管理", free: "预设分类", pro: "自定义分类")
                         FeatureComparisonRow(title: "高级图标", free: "基础图标", pro: "完整图标库")
                         FeatureComparisonRow(title: "云同步", free: "不支持", pro: "支持")
-                        FeatureComparisonRow(title: "导出格式", free: "CSV", pro: "CSV和JSON")
+                        FeatureComparisonRow(title: "导出格式", free: "仅CSV", pro: "CSV和JSON")
                         FeatureComparisonRow(title: "更新", free: "基础更新", pro: "优先更新")
                     }
                     .padding()

@@ -154,36 +154,22 @@ struct SettingsView: View {
                     }
                 }
                 
-                // 导出数据功能 - 仅专业版可用
-                HStack {
-                    Label("导出数据", systemImage: "arrow.up.doc")
-                    Spacer()
-                    if purchaseManager.isPro {
-                        Button("导出") {
-                            showingExportOptions = true
+                // 导出数据功能 - 所有用户可用，但专业版有更多选项
+                Button {
+                    showingExportOptions = true
+                } label: {
+                    HStack {
+                        Label("导出数据", systemImage: "arrow.up.doc")
+                        Spacer()
+                        if !purchaseManager.isPro {
+                            Text("CSV")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("CSV/JSON")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
                         }
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
-                    } else {
-                        Button("仅专业版") {
-                            showingProUpgrade = true
-                        }
-                        .foregroundColor(.orange)
-                        .font(.footnote)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(4)
-                        .overlay(
-                            Image(systemName: "crown.fill")
-                                .font(.system(size: 8))
-                                .foregroundColor(.orange)
-                                .offset(x: -4, y: -8),
-                            alignment: .topLeading
-                        )
                     }
                 }
                 
@@ -258,20 +244,21 @@ struct SettingsView: View {
             }
         }
         .alert("导出选项", isPresented: $showingExportOptions) {
-            // 确保当前是专业版用户才能使用导出选项
+            // 所有用户都可以使用CSV导出
+            Button("导出CSV") {
+                exportText = exportToCSV()
+                showingExportResult = true
+            }
+            
+            // 只有专业版用户可以使用JSON导出
             if purchaseManager.isPro {
-                Button("导出CSV") {
-                    exportText = exportToCSV()
-                    showingExportResult = true
-                }
-                
                 Button("导出JSON") {
                     exportText = exportToJSON()
                     showingExportResult = true
                 }
             } else {
-                // 如果非专业版用户尝试导出（可能是通过其他方式进入），显示升级信息
-                Button("升级到专业版") {
+                // 免费版用户显示升级选项
+                Button("升级获取JSON导出") {
                     showingProUpgrade = true
                 }
             }
@@ -281,7 +268,7 @@ struct SettingsView: View {
             if purchaseManager.isPro {
                 Text("选择导出格式")
             } else {
-                Text("导出数据功能需要专业版")
+                Text("免费版支持CSV格式导出，升级专业版可使用JSON格式")
             }
         }
         .alert("导出数据", isPresented: $showingExportResult) {
@@ -300,7 +287,7 @@ struct SettingsView: View {
                 Text("数据已成功导出。您可以复制到剪贴板使用。")
                 
                 if !purchaseManager.isPro {
-                    Text("升级到专业版后，可以导出为JSON格式，并获得更多数据分析功能。")
+                    Text("升级到专业版后，可以导出为JSON格式，获得更丰富的数据结构和更好的兼容性。")
                         .font(.caption)
                         .foregroundColor(.orange)
                         .padding(.top, 8)
