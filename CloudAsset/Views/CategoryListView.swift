@@ -161,22 +161,39 @@ struct CategoryFormView: View {
         }
     }
     
-    // 系统图标选择
+    // 系统图标选择 - 资产管理相关图标
     private let iconOptions: [String] = [
-        "folder", "laptopcomputer", "desktopcomputer", "tv", "display", "headphones",
-        "phone", "iphone", "ipad", "gamecontroller", "paintbrush", "camera", 
-        "video", "music.note", "book", "newspaper", "doc", "mail", "bag",
-        "creditcard", "banknote", "dollarsign.circle", "cart", "gift", "tag",
-        "house", "building", "car", "airplane", "bus", "tram", "bicycle",
-        "bed.double", "sofa", "chair", "table", "refrigerator", "oven", 
-        "microwave", "washer", "printer", "hammer", "wrench", "screwdriver",
-        "scissors", "paintpalette", "suitcase", "briefcase", "backpack", 
-        "tshirt", "shoe", "eyeglasses", "facemask", "medicalcross", "pills",
-        "cross", "heart", "staroflife", "brain", "ear", "eye", "nose", "mouth",
-        "hand.raised", "hand.thumbsup", "hand.point.up", "bolt", "flame", "drop",
-        "leaf", "tornado", "sun.max", "moon", "sparkles", "cloud", "snowflake",
-        "umbrella", "globe", "mountain", "tree", "flower", "bird", "tortoise",
-        "hare", "fish", "pawprint", "ant", "ladybug"
+        // 电子设备类
+        "laptopcomputer", "desktopcomputer", "tv", "display", "headphones",
+        "phone", "iphone", "ipad", "applewatch", "airpods", "homepod.fill",
+        "gamecontroller", "camera", "video", "printer", "keyboard", "mouse",
+        
+        // 家居类
+        "house", "bed.double", "sofa", "chair", "table.furniture", "lamp", 
+        "tv.and.mediabox", "refrigerator", "oven", "washer", "microwave",
+        
+        // 交通工具
+        "car", "bicycle", "airplane", "bus", "tram.fill", "scooter",
+        
+        // 金融类
+        "creditcard", "creditcard.fill", "banknote", "dollarsign.circle", 
+        "dollarsign.square", "bag", "cart", "tag", "giftcard", "wallet.pass",
+        
+        // 办公用品
+        "folder", "doc", "book", "newspaper", "briefcase", "case",
+        "paperclip", "ruler", "pencil", "highlighter", "scissors", "paintbrush",
+        
+        // 服装/个人物品
+        "tshirt", "backpack", "handbag", "eyeglasses", "watch", "shoe",
+        
+        // 工具
+        "hammer", "wrench", "screwdriver", "powerplug", "lightbulb", "battery.100",
+        
+        // 收藏品
+        "photo", "film", "guitars", "pianokeys", "book.closed", "medal",
+        
+        // 珠宝/奢侈品
+        "diamond", "crown", "seal", "wand.and.stars", "gift", "sparkles"
     ]
     
     // 加载现有数据
@@ -233,31 +250,37 @@ struct CategoryFormView: View {
             
             Section(header: Text("图标")) {
                 ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 10) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.adaptive(minimum: 55), spacing: 10), count: 5), spacing: 12) {
                         ForEach(0..<iconOptions.count, id: \.self) { index in
                             let iconName = iconOptions[index]
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(icon == iconName ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
-                                    .frame(width: 50, height: 50)
-                                
-                                Image(systemName: iconName)
-                                    .font(.title2)
-                                    .foregroundColor(icon == iconName ? .blue : .primary)
-                            }
-                            .onTapGesture {
+                            Button {
                                 withAnimation {
-                                    self.icon = iconName
-                                    print("选择了图标: \(iconName)，索引: \(index)")
+                                    icon = iconName
+                                    print("选择了图标: \(iconName)")
+                                }
+                            } label: {
+                                VStack {
+                                    ZStack {
+                                        Circle()
+                                            .fill(icon == iconName ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                            .frame(width: 50, height: 50)
+                                        
+                                        Image(systemName: iconName)
+                                            .font(.system(size: 22))
+                                            .foregroundColor(icon == iconName ? .blue : .primary)
+                                    }
                                 }
                             }
-                            .id("icon_\(iconName)_\(index)")
+                            .buttonStyle(BorderlessButtonStyle()) // 阻止点击事件传播
+                            .id("icon_\(iconName)")
                         }
                     }
+                    .padding(10)
                 }
-                .padding(.vertical, 5)
+                .frame(height: 270)
+                .background(Color.gray.opacity(0.05))
+                .cornerRadius(8)
             }
-            .frame(maxHeight: 300)
             
             Section(header: Text("备注")) {
                 TextEditor(text: $notes)
