@@ -70,8 +70,13 @@ struct AssetFormView: View {
     
     // 处理编辑后的图像
     private func onImageCaptured(_ image: UIImage) {
-        selectedImage = image
-        imageData = cameraManager.compressImage(image)
+        // 使用主线程更新UI
+        DispatchQueue.main.async {
+            self.selectedImage = image
+            self.imageData = self.cameraManager.compressImage(image)
+            // 强制UI刷新
+            self.refreshID = UUID()
+        }
     }
     
     // 标题
@@ -474,19 +479,21 @@ struct AssetFormView: View {
         .sheet(isPresented: $showingPhotoEditor) {
             if let editImage = imageToEdit, 
                let imageCopy = editImage.safeCopy() as? UIImage {
-                PhotoEditView(image: .constant(imageCopy), onComplete: onImageCaptured)
+                PhotoEditView(image: .constant(imageCopy), onComplete: { editedImage in
+                    // 编辑完成后在主线程安全地更新图像
+                    DispatchQueue.main.async {
+                        self.selectedImage = editedImage
+                        self.imageData = self.cameraManager.compressImage(editedImage)
+                        self.refreshID = UUID() // 强制刷新UI
+                    }
+                })
             } else {
                 // 如果无法创建图像副本，显示一个空视图
                 EmptyView()
             }
         }
         .onDisappear {
-            // 停止相机会话
             cameraManager.stopSession()
-            // 延迟重置相机状态，确保相机资源被正确释放
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                cameraManager.resetCamera()
-            }
         }
     }
 }
@@ -631,8 +638,15 @@ struct CameraView: View {
             if let previewImage = cameraManager.previewImage, 
                let imageCopy = previewImage.safeCopy() as? UIImage {
                 PhotoEditView(image: .constant(imageCopy), onComplete: { editedImage in
-                    onImageCaptured(editedImage)
-                    dismiss()
+                    // 安全地在主线程处理回调
+                    DispatchQueue.main.async {
+                        // 调用回调函数传递编辑后的图像
+                        onImageCaptured(editedImage)
+                        // 短暂延迟后关闭相机视图，返回到表单
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            dismiss()
+                        }
+                    }
                 })
             } else {
                 // 如果无法创建图像副本，显示一个空视图
@@ -785,27 +799,28 @@ struct PhotoEditView: View {
                     }
                 }
                 
-                Button(action: {
-                    showingFilterSheet = true
-                }) {
-                    Label("滤镜", systemImage: "camera.filters")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-                .padding(.horizontal)
-                
-                Button(action: {
-                    showingAdjustmentSheet = true
-                }) {
-                    Label("亮度和对比度", systemImage: "slider.horizontal.3")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                HStack {
+                    Button(action: {
+                        showingFilterSheet = true
+                    }) {
+                        Label("滤镜", systemImage: "camera.filters")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
+                    
+                    Button(action: {
+                        showingAdjustmentSheet = true
+                    }) {
+                        Label("调整", systemImage: "slider.horizontal.3")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
                 }
                 .padding(.horizontal)
                 
@@ -828,7 +843,7 @@ struct PhotoEditView: View {
                     Button(action: {
                         saveEditedImage()
                     }) {
-                        Text("保存")
+                        Text("完成")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.green)
@@ -849,36 +864,43 @@ struct PhotoEditView: View {
                 }
             }
             .sheet(isPresented: $showingFilterSheet) {
-                FilterSelectionView(selectedFilter: $currentFilter, onFilterSelected: applySelectedFilter)
+                FilterSelectionView(
+                    selectedFilter: $currentFilter,
+                    originalImage: originalImage,
+                    brightness: brightness,
+                    contrast: contrast,
+                    onFilterSelected: { filter in
+                        currentFilter = filter
+                        applyCurrentEffects()
+                    }
+                )
             }
             .sheet(isPresented: $showingAdjustmentSheet) {
-                BrightnessContrastView(brightness: $brightness, contrast: $contrast, onAdjustment: applyAdjustment)
+                BrightnessContrastView(
+                    brightness: $brightness,
+                    contrast: $contrast,
+                    originalImage: originalImage,
+                    currentFilter: currentFilter,
+                    onValueChanged: { newBrightness, newContrast in
+                        brightness = newBrightness
+                        contrast = newContrast
+                        applyCurrentEffects()
+                    }
+                )
+            }
+            .onAppear {
+                // 初始显示时应用当前的效果
+                applyCurrentEffects()
             }
         }
     }
     
-    private func applySelectedFilter() {
+    private func applyCurrentEffects() {
         isProcessing = true
         
         // 在后台线程处理图像
         DispatchQueue.global(qos: .userInitiated).async {
-            let baseImage = processedImage ?? image.wrappedValue
-            let result = applyFilter(to: baseImage, filter: currentFilter, brightness: brightness, contrast: contrast)
-            
-            DispatchQueue.main.async {
-                processedImage = result
-                isProcessing = false
-            }
-        }
-    }
-    
-    private func applyAdjustment() {
-        isProcessing = true
-        
-        // 在后台线程处理图像
-        DispatchQueue.global(qos: .userInitiated).async {
-            let baseImage = processedImage ?? image.wrappedValue
-            let result = applyFilter(to: baseImage, filter: currentFilter, brightness: brightness, contrast: contrast)
+            let result = applyFilter(to: originalImage, filter: currentFilter, brightness: brightness, contrast: contrast)
             
             DispatchQueue.main.async {
                 processedImage = result
@@ -888,25 +910,44 @@ struct PhotoEditView: View {
     }
     
     private func saveEditedImage() {
+        // 显示处理中状态
         isProcessing = true
         
         // 在后台线程处理最终图像
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInteractive).async {
             // 使用最终处理的图像或原始图像
-            let finalImage = processedImage ?? image.wrappedValue
+            let finalImage = self.processedImage ?? self.image.wrappedValue
             
+            // 使用autoreleasepool确保内存管理
             autoreleasepool {
                 // 创建一个新的图像副本，确保内存安全
-                if let finalCopy = finalImage.safeCopy() as? UIImage {
+                if let finalCopy = finalImage.safeCopy() {
+                    // 在主线程完成回调和UI更新
                     DispatchQueue.main.async {
-                        isProcessing = false
-                        onComplete(finalCopy)
+                        // 先回调以更新图像
+                        self.onComplete(finalCopy)
+                        
+                        // 将处理状态设为false
+                        self.isProcessing = false
+                        
+                        // 短暂延迟后关闭视图，避免闪烁
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            self.dismiss()
+                        }
                     }
                 } else {
                     // 如果复制失败，使用原始图像
                     DispatchQueue.main.async {
-                        isProcessing = false
-                        onComplete(finalImage)
+                        // 先回调以更新图像
+                        self.onComplete(finalImage)
+                        
+                        // 将处理状态设为false
+                        self.isProcessing = false
+                        
+                        // 短暂延迟后关闭视图，避免闪烁
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            self.dismiss()
+                        }
                     }
                 }
             }
@@ -918,54 +959,104 @@ struct PhotoEditView: View {
 struct FilterSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedFilter: FilterType
-    var onFilterSelected: () -> Void
+    var originalImage: UIImage
+    var brightness: Double
+    var contrast: Double
+    var onFilterSelected: (FilterType) -> Void
+    
+    @State private var previewImages: [FilterType: UIImage] = [:]
+    @State private var isGeneratingPreviews = true
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 15) {
-                        ForEach(FilterType.allCases) { filter in
-                            VStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 80)
-                                    .overlay(
-                                        Text(filter.rawValue)
-                                            .foregroundColor(.primary)
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(selectedFilter == filter ? Color.blue : Color.clear, lineWidth: 3)
-                                    )
-                            }
-                            .onTapGesture {
-                                selectedFilter = filter
+            VStack {
+                if isGeneratingPreviews {
+                    ProgressView("生成预览中...")
+                        .padding()
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 15) {
+                            ForEach(FilterType.allCases) { filter in
+                                VStack {
+                                    // 预览图片
+                                    if let preview = previewImages[filter] {
+                                        Image(uiImage: preview)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(height: 80)
+                                            .cornerRadius(8)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(selectedFilter == filter ? Color.blue : Color.clear, lineWidth: 3)
+                                            )
+                                    } else {
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(height: 80)
+                                            .cornerRadius(8)
+                                    }
+                                    
+                                    Text(filter.rawValue)
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                                .onTapGesture {
+                                    selectedFilter = filter
+                                    onFilterSelected(filter)
+                                }
                             }
                         }
+                        .padding()
                     }
-                    .padding()
-                    
-                    Button("应用滤镜") {
-                        onFilterSelected()
-                        dismiss()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                    .padding(.horizontal)
                 }
             }
             .navigationTitle("选择滤镜")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("返回") {
                         dismiss()
                     }
                 }
+            }
+            .onAppear {
+                generateFilterPreviews()
+            }
+        }
+    }
+    
+    private func generateFilterPreviews() {
+        isGeneratingPreviews = true
+        
+        // 创建缩略图尺寸的图像用于预览
+        let thumbnailSize: CGFloat = 120
+        var previewImage = originalImage
+        
+        // 如果原图太大，先缩小以加快预览生成
+        if originalImage.size.width > thumbnailSize || originalImage.size.height > thumbnailSize {
+            let scale = min(thumbnailSize / originalImage.size.width, thumbnailSize / originalImage.size.height)
+            let newSize = CGSize(width: originalImage.size.width * scale, height: originalImage.size.height * scale)
+            
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            originalImage.draw(in: CGRect(origin: .zero, size: newSize))
+            if let resized = UIGraphicsGetImageFromCurrentImageContext() {
+                previewImage = resized
+            }
+            UIGraphicsEndImageContext()
+        }
+        
+        // 在后台线程生成所有滤镜的预览
+        DispatchQueue.global(qos: .userInitiated).async {
+            var previews: [FilterType: UIImage] = [:]
+            
+            for filter in FilterType.allCases {
+                let filtered = applyFilter(to: previewImage, filter: filter, brightness: brightness, contrast: contrast)
+                previews[filter] = filtered
+            }
+            
+            DispatchQueue.main.async {
+                self.previewImages = previews
+                self.isGeneratingPreviews = false
             }
         }
     }
@@ -976,18 +1067,66 @@ struct BrightnessContrastView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var brightness: Double
     @Binding var contrast: Double
-    var onAdjustment: () -> Void
+    var originalImage: UIImage
+    var currentFilter: FilterType
+    var onValueChanged: (Double, Double) -> Void
+    
+    @State private var previewImage: UIImage?
+    @State private var isProcessing = false
+    @State private var currentBrightness: Double
+    @State private var currentContrast: Double
+    @State private var isSliding = false
+    
+    // 防抖计时器
+    @State private var debounceTimer: Timer?
+    
+    init(brightness: Binding<Double>, contrast: Binding<Double>, originalImage: UIImage, currentFilter: FilterType, onValueChanged: @escaping (Double, Double) -> Void) {
+        self._brightness = brightness
+        self._contrast = contrast
+        self.originalImage = originalImage
+        self.currentFilter = currentFilter
+        self.onValueChanged = onValueChanged
+        
+        // 初始化当前值
+        self._currentBrightness = State(initialValue: brightness.wrappedValue)
+        self._currentContrast = State(initialValue: contrast.wrappedValue)
+    }
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 30) {
+            VStack {
+                // 预览图片 - 使用ZStack避免在切换时出现闪烁
+                ZStack {
+                    if let preview = previewImage {
+                        Image(uiImage: preview)
+                            .resizable()
+                            .scaledToFit()
+                            .transition(.opacity)
+                    } else {
+                        Image(uiImage: originalImage)
+                            .resizable()
+                            .scaledToFit()
+                            .transition(.opacity)
+                    }
+                    
+                    if isProcessing && !isSliding {
+                        ProgressView("更新预览...")
+                            .padding()
+                            .background(Color.black.opacity(0.6))
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: previewImage != nil)
+                .padding()
+                
                 // 亮度滑块
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text("亮度")
                             .font(.headline)
                         Spacer()
-                        Text("\(Int(brightness))")
+                        Text("\(Int(currentBrightness))")
                             .foregroundColor(.secondary)
                             .frame(width: 40, alignment: .trailing)
                     }
@@ -996,14 +1135,21 @@ struct BrightnessContrastView: View {
                         Image(systemName: "sun.min")
                             .foregroundColor(.secondary)
                         
-                        Slider(value: $brightness, in: -15...15, step: 0.5)
+                        Slider(value: $currentBrightness, in: -15...15, step: 0.5) { editing in
+                            isSliding = editing
+                            if !editing {
+                                // 滑动结束时更新
+                                updatePreviewWithDelay()
+                            }
+                        }
                         
                         Image(systemName: "sun.max")
                             .foregroundColor(.secondary)
                     }
                     
                     Button("重置亮度") {
-                        brightness = 0
+                        currentBrightness = 0
+                        updatePreviewWithDelay()
                     }
                     .font(.footnote)
                     .padding(.vertical, 5)
@@ -1016,7 +1162,7 @@ struct BrightnessContrastView: View {
                         Text("对比度")
                             .font(.headline)
                         Spacer()
-                        Text("\(Int(contrast))")
+                        Text("\(Int(currentContrast))")
                             .foregroundColor(.secondary)
                             .frame(width: 40, alignment: .trailing)
                     }
@@ -1025,14 +1171,21 @@ struct BrightnessContrastView: View {
                         Image(systemName: "circle.lefthalf.filled")
                             .foregroundColor(.secondary)
                         
-                        Slider(value: $contrast, in: -15...15, step: 0.5)
+                        Slider(value: $currentContrast, in: -15...15, step: 0.5) { editing in
+                            isSliding = editing
+                            if !editing {
+                                // 滑动结束时更新
+                                updatePreviewWithDelay()
+                            }
+                        }
                         
                         Image(systemName: "circle.fill")
                             .foregroundColor(.secondary)
                     }
                     
                     Button("重置对比度") {
-                        contrast = 0
+                        currentContrast = 0
+                        updatePreviewWithDelay()
                     }
                     .font(.footnote)
                     .padding(.vertical, 5)
@@ -1042,7 +1195,9 @@ struct BrightnessContrastView: View {
                 Spacer()
                 
                 Button("应用调整") {
-                    onAdjustment()
+                    brightness = currentBrightness
+                    contrast = currentContrast
+                    onValueChanged(currentBrightness, currentContrast)
                     dismiss()
                 }
                 .frame(maxWidth: .infinity)
@@ -1057,9 +1212,68 @@ struct BrightnessContrastView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("返回") {
                         dismiss()
                     }
+                }
+            }
+            .onAppear {
+                // 第一次显示时加载预览
+                updatePreview()
+            }
+            .onDisappear {
+                // 清理计时器
+                debounceTimer?.invalidate()
+                debounceTimer = nil
+            }
+        }
+    }
+    
+    // 延迟更新预览以避免频繁处理
+    private func updatePreviewWithDelay() {
+        debounceTimer?.invalidate()
+        
+        // 当滑块正在滑动时，不显示加载指示器，避免闪烁
+        if !isSliding {
+            isProcessing = true
+        }
+        
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { _ in
+            updatePreview()
+        }
+    }
+    
+    private func updatePreview() {
+        if !isSliding {
+            isProcessing = true
+        }
+        
+        // 创建略小的预览图像以提高性能
+        let previewSize: CGFloat = 600
+        var imageToProcess = originalImage
+        
+        // 如果原图太大，先缩小
+        if originalImage.size.width > previewSize || originalImage.size.height > previewSize {
+            let scale = min(previewSize / originalImage.size.width, previewSize / originalImage.size.height)
+            let newSize = CGSize(width: originalImage.size.width * scale, height: originalImage.size.height * scale)
+            
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            originalImage.draw(in: CGRect(origin: .zero, size: newSize))
+            if let resized = UIGraphicsGetImageFromCurrentImageContext() {
+                imageToProcess = resized
+            }
+            UIGraphicsEndImageContext()
+        }
+        
+        // 使用后台高优先级队列处理图像
+        DispatchQueue.global(qos: .userInteractive).async {
+            let result = applyFilter(to: imageToProcess, filter: currentFilter, brightness: currentBrightness, contrast: currentContrast)
+            
+            // 回到主线程更新UI
+            DispatchQueue.main.async {
+                withAnimation {
+                    self.previewImage = result
+                    self.isProcessing = false
                 }
             }
         }
