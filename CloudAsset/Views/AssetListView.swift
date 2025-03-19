@@ -65,30 +65,10 @@ struct AssetListView: View {
     }
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             // 下拉列表筛选器
-            VStack(spacing: 8) {
-                // 标题栏
-                HStack {
-                    Text("筛选条件")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .padding(.leading)
-                    
-                    Spacer()
-                    
-                    if selectedCategoryId != nil || usageFilterMode != .all {
-                        Button("清除筛选") {
-                            selectedCategoryId = nil
-                            usageFilterMode = .all
-                            filterChangeCounter += 1
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.blue)
-                        .padding(.trailing)
-                    }
-                }
-                
+            VStack(spacing: 4) {
+                // 直接显示下拉列表，删除标题栏
                 HStack(spacing: 12) {
                     // 类别下拉列表
                     Menu {
@@ -139,9 +119,9 @@ struct AssetListView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(Color.gray.opacity(0.1))
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(Color(.secondarySystemBackground))
                         .cornerRadius(8)
                     }
                     
@@ -195,23 +175,18 @@ struct AssetListView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(Color.gray.opacity(0.1))
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(Color(.secondarySystemBackground))
                         .cornerRadius(8)
                     }
                 }
                 .padding(.horizontal)
+                .padding(.top, 4)
                 
                 // 显示当前选中的过滤条件指示器
                 if selectedCategoryId != nil || usageFilterMode != .all {
                     HStack(spacing: 8) {
-                        if selectedCategoryId != nil && usageFilterMode != .all {
-                            Text("已筛选:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
                         // 显示选中的类别
                         if let categoryId = selectedCategoryId, 
                           let selectedCategory = assetRepository.categories.first(where: { $0.wrappedId == categoryId }) {
@@ -242,6 +217,17 @@ struct AssetListView: View {
                         }
                         
                         Spacer()
+                        
+                        // 清除所有筛选条件按钮
+                        if selectedCategoryId != nil && usageFilterMode != .all {
+                            Button("清除全部") {
+                                selectedCategoryId = nil
+                                usageFilterMode = .all
+                                filterChangeCounter += 1
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.top, 4)
@@ -249,8 +235,8 @@ struct AssetListView: View {
                     .animation(.easeInOut, value: filterChangeCounter)
                 }
             }
-            .padding(.top, 5)
-            .padding(.bottom, 5)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
             .background(Color(.systemBackground))
             
             // 资产列表 - 添加下拉刷新
