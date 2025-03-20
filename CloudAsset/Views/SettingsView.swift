@@ -414,7 +414,7 @@ struct AboutView: View {
                     HStack {
                         Text("版权所有")
                         Spacer()
-                        Text("© 2025 Cloud Asset")
+                        Text("© 2025 James Wang")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -422,28 +422,28 @@ struct AboutView: View {
                 Section(header: Text("联系我们")) {
                     Button {
                         // 发送邮件
-                        if let url = URL(string: "mailto:support@cloudasset.com") {
+                        if let url = URL(string: "mailto:daxiaoaiwan@gmail.com") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
                         HStack {
                             Text("电子邮件")
                             Spacer()
-                            Text("support@cloudasset.com")
+                            Text("daxiaoaiwan@gmail.com")
                                 .foregroundColor(.blue)
                         }
                     }
                     
                     Button {
                         // 打开网站
-                        if let url = URL(string: "https://www.cloudasset.com") {
+                        if let url = URL(string: "https://cloudasset.netlify.app") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
                         HStack {
                             Text("网站")
                             Spacer()
-                            Text("www.cloudasset.com")
+                            Text("cloudasset.netlify.app")
                                 .foregroundColor(.blue)
                         }
                     }
