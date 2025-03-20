@@ -379,6 +379,8 @@ struct SettingsView: View {
 
 // 关于视图
 struct AboutView: View {
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
         NavigationStack {
             List {
@@ -454,7 +456,7 @@ struct AboutView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") {
-                        // 关闭视图
+                        dismiss()
                     }
                 }
             }
