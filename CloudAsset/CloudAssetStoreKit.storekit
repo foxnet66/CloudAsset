@@ -1,0 +1,35 @@
+{
+  "identifier" : "CloudAssetStoreKit",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "6.00",
+      "familyShareable" : false,
+      "internalID" : "6FFBF138",
+      "localizations" : [
+        {
+          "description" : "解锁所有高级功能，包括无限资产、自定义类别、云同步等",
+          "displayName" : "CloudAsset 专业版",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.cloudasset.proversion",
+      "referenceName" : "CloudAsset Pro Version",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6FFBF139",
+    "_developerTeamID" : "468SHW5TLW",
+    "_lastSynchronizedDate" : 711273600
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+} 

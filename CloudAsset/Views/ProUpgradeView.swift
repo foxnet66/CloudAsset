@@ -3,6 +3,7 @@ import SwiftUI
 struct ProUpgradeView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var purchaseManager: PurchaseManager
+    @State private var showingError = false
     
     var body: some View {
         NavigationStack {
@@ -82,29 +83,6 @@ struct ProUpgradeView: View {
                                 .foregroundColor(.blue)
                         }
                         .disabled(purchaseManager.purchaseInProgress)
-                        
-                        // 添加测试按钮（仅在调试模式下显示）
-                        #if DEBUG
-                        Divider()
-                            .padding(.vertical)
-                        
-                        Button {
-                            Task {
-                                await purchaseManager.toggleProStatusForTesting()
-                                dismiss()
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "wrench.fill")
-                                Text("测试：切换专业版状态")
-                            }
-                            .frame(minWidth: 200)
-                            .padding()
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-                        #endif
                     }
                     .padding(.vertical)
                 }
@@ -124,6 +102,14 @@ struct ProUpgradeView: View {
                     // 已经是专业版，关闭窗口
                     dismiss()
                 }
+            }
+            .alert("购买错误", isPresented: $showingError) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(purchaseManager.purchaseError ?? "未知错误")
+            }
+            .onChange(of: purchaseManager.purchaseError) { error in
+                showingError = error != nil
             }
         }
     }
